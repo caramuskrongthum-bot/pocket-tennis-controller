@@ -1,86 +1,514 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tennis Controller</title>
-    <!-- โหลด PeerJS ให้ชัวร์ว่าเป็น HTTPS -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #0f172a; color: #fff; padding: 20px; }
-        button { font-size: 20px; padding: 16px 32px; border-radius: 12px; background: #0284c7; color: white; border: none; font-weight: bold; width: 100%; margin-top: 20px; }
-        .status { margin-top: 20px; font-size: 16px; color: #fbbf24; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Painter Pro - Custom Brush & PBR</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; overflow: hidden; background: #111; font-family: sans-serif; color: #fff; user-select: none; }
+    #canvas-container { width: 100vw; height: 100vh; position: relative; }
+    
+    .ui-panel {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(20, 20, 20, 0.94); backdrop-filter: blur(14px);
+      padding: 12px; border-radius: 14px; display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.8); max-width: 95vw; border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ui-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    label { font-size: 11px; font-weight: bold; color: #ddd; }
+    
+    button, .file-btn, select {
+      background: #ff2a74; color: white; border: none; padding: 6px 10px;
+      border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-block;
+    }
+    select { background: #333; outline: none; }
+    button:disabled { background: #444 !important; color: #888; cursor: not-allowed; }
+    button:active:not(:disabled), .file-btn:active { opacity: 0.8; }
+    input[type="file"] { display: none; }
+    input[type="color"] { border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; background: transparent; }
+    input[type="range"] { width: 60px; }
+    .shortcut-info { font-size: 10px; color: #aaa; margin-top: 2px; line-height: 1.3; }
+  </style>
+
+  <!-- Three.js + Loaders -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-    <h2>🎾 Tennis Motion Controller</h2>
-    <div id="status" class="status">🔴 ยังไม่ได้กดเชื่อมต่อ</div>
-    <button id="startBtn" onclick="initController()">1. อนุญาตเซนเซอร์ & เชื่อมต่อ</button>
 
-    <script>
-        // ดึงค่า gameId จาก URL ที่ได้จากการสแกน QR Code
-        const urlParams = new URLSearchParams(window.location.search);
-        const hostId = urlParams.get('gameId');
+<div id="canvas-container">
+  <div class="ui-panel">
+    <!-- Row 1: Load Models & Maps -->
+    <div class="ui-row">
+      <label class="file-btn" style="background:#8e24aa;">📦 โหลด 3D (.obj/.fbx)
+        <input type="file" id="file-model" accept=".obj, .fbx">
+      </label>
+      <label class="file-btn" style="background:#0288d1;">🖼️ Base Color
+        <input type="file" id="file-texture" accept="image/*">
+      </label>
+      <label class="file-btn" style="background:#43a047;">🟣 Normal
+        <input type="file" id="file-normal" accept="image/*">
+      </label>
+      <label class="file-btn" style="background:#f57c00;">⚪ AO
+        <input type="file" id="file-ao" accept="image/*">
+      </label>
+    </div>
 
-        let peer;
-        let conn;
+    <!-- Row 2: Shading & PBR Adjustments -->
+    <div class="ui-row">
+      <label>แสง:</label>
+      <select id="select-shading">
+        <option value="lit">Lit (มาตรฐาน)</option>
+        <option value="unlit">Unlit (สีตรง)</option>
+        <option value="toon">Toon (อนิเมะ)</option>
+      </select>
+      <label>นูน Normal:</label>
+      <input type="range" id="normal-scale" min="0" max="3" step="0.1" value="1">
+      <label>เงา AO:</label>
+      <input type="range" id="ao-intensity" min="0" max="3" step="0.1" value="1">
+    </div>
 
-        function initController() {
-            if (!hostId) {
-                alert("ไม่พบรหัสห้อง (gameId)! กรุณาสแกน QR Code จากหน้าจอเกมใหม่อีกครั้ง");
-                return;
-            }
+    <!-- Row 3: Custom Brush Controls -->
+    <div class="ui-row">
+      <label>ชนิดพู่กัน:</label>
+      <select id="brush-type">
+        <option value="default">วงกลมมาตรฐาน</option>
+        <option value="custom">รูปภาพ Custom 🖼️</option>
+      </select>
+      <label class="file-btn" id="btn-custom-brush-file" style="background:#e91e63; display:none;">🖌️ เลือกรูปพู่กัน
+        <input type="file" id="file-brush" accept="image/*">
+      </label>
+      <label>ระยะห่าง (Spacing):</label>
+      <input type="range" id="brush-spacing" min="1" max="50" value="5">
+    </div>
 
-            // ขออนุญาตใช้ Gyroscope ใน iOS / Android
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission().then(response => {
-                    if (response === 'granted') startPeer();
-                    else alert("ต้องกดอนุญาตใช้งาน Motion Sensor ก่อนเล่นนะครับ");
-                }).catch(console.error);
-            } else {
-                startPeer();
-            }
+    <!-- Row 4: Brush Color & Size -->
+    <div class="ui-row">
+      <label>สีพู่กัน:</label>
+      <input type="color" id="brush-color" value="#ff0055">
+      <label>ขนาด:</label>
+      <input type="range" id="brush-size" min="5" max="120" value="25">
+      <label>ใส:</label>
+      <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1">
+    </div>
+
+    <!-- Row 5: Actions -->
+    <div class="ui-row">
+      <button id="btn-undo" style="background:#ff9800;" disabled>↩️ ย้อนกลับ</button>
+      <button id="btn-redo" style="background:#ff9800;" disabled>↪️ ทำซ้ำ</button>
+      <button id="btn-symmetry" style="background:#00bcd4;">สมมาตร: ปิด 🪞</button>
+      <button id="btn-mode">โหมด: ระบาย 🎨</button>
+      <button id="btn-eraser" style="background:#555;">พู่กัน 🖌️</button>
+      <button id="btn-save" style="background:#00c853;">เซฟ PNG 💾</button>
+    </div>
+
+    <div class="shortcut-info">
+      💡 <b>คีย์ลัด:</b> [Ctrl+Z] ย้อนกลับ | [Ctrl+Y] ทำซ้ำ | [Spacebar] สลับโหมด | [E] ยางลบ | [S] สมมาตร
+    </div>
+  </div>
+</div>
+
+<script>
+  // 1. Canvas Setup & History
+  const textureCanvas = document.createElement('canvas');
+  textureCanvas.width = 2048;
+  textureCanvas.height = 2048;
+  const ctx = textureCanvas.getContext('2d');
+  
+  const historyStack = [];
+  const redoStack = [];
+  const MAX_HISTORY = 15;
+
+  function saveState() {
+    if (historyStack.length >= MAX_HISTORY) historyStack.shift();
+    historyStack.push(ctx.getImageData(0, 0, textureCanvas.width, textureCanvas.height));
+    redoStack.length = 0;
+    updateUndoRedoButtons();
+  }
+
+  function undo() {
+    if (historyStack.length > 1) {
+      redoStack.push(historyStack.pop());
+      ctx.putImageData(historyStack[historyStack.length - 1], 0, 0);
+      baseTexture.needsUpdate = true;
+      updateUndoRedoButtons();
+    }
+  }
+
+  function redo() {
+    if (redoStack.length > 0) {
+      const state = redoStack.pop();
+      historyStack.push(state);
+      ctx.putImageData(state, 0, 0);
+      baseTexture.needsUpdate = true;
+      updateUndoRedoButtons();
+    }
+  }
+
+  function updateUndoRedoButtons() {
+    document.getElementById('btn-undo').disabled = historyStack.length <= 1;
+    document.getElementById('btn-redo').disabled = redoStack.length === 0;
+  }
+
+  function resetCanvas() {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, textureCanvas.width, textureCanvas.height);
+    historyStack.length = 0;
+    redoStack.length = 0;
+    saveState();
+  }
+  resetCanvas();
+
+  // Custom Brush Elements
+  let customBrushImage = null;
+  const brushTintCanvas = document.createElement('canvas');
+  const brushTintCtx = brushTintCanvas.getContext('2d');
+
+  function prepareTintedBrush(color, size) {
+    if (!customBrushImage) return null;
+    brushTintCanvas.width = size;
+    brushTintCanvas.height = size;
+
+    brushTintCtx.clearRect(0, 0, size, size);
+    brushTintCtx.drawImage(customBrushImage, 0, 0, size, size);
+
+    if (!isEraser) {
+      brushTintCtx.globalCompositeOperation = 'source-in';
+      brushTintCtx.fillStyle = color;
+      brushTintCtx.fillRect(0, 0, size, size);
+      brushTintCtx.globalCompositeOperation = 'source-over';
+    }
+    return brushTintCanvas;
+  }
+
+  // 2. Three.js Setup
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a1a);
+
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+  camera.position.set(0, 2, 5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  scene.add(ambientLight);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  dirLight.position.set(5, 10, 7.5);
+  scene.add(dirLight);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enabled = false;
+
+  const baseTexture = new THREE.CanvasTexture(textureCanvas);
+  let normalTexture = null;
+  let aoTexture = null;
+
+  const materials = {
+    lit: new THREE.MeshStandardMaterial({ map: baseTexture, roughness: 0.5, metalness: 0.1 }),
+    unlit: new THREE.MeshBasicMaterial({ map: baseTexture }),
+    toon: new THREE.MeshToonMaterial({ map: baseTexture })
+  };
+
+  let currentMaterial = materials.lit;
+  let loadedModel = null;
+  let isPaintingMode = true;
+  let isEraser = false;
+  let isSymmetry = false;
+  let isMouseDown = false;
+  let hasPaintedThisStroke = false;
+  let lastUV = null;
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  function updateMaterialTextures() {
+    Object.values(materials).forEach(mat => {
+      mat.map = baseTexture;
+      if (mat !== materials.unlit) {
+        mat.normalMap = normalTexture;
+        mat.aoMap = aoTexture;
+        mat.aoMapIntensity = parseFloat(document.getElementById('ao-intensity').value);
+        if (mat.normalScale) {
+          const nScale = parseFloat(document.getElementById('normal-scale').value);
+          mat.normalScale.set(nScale, nScale);
         }
+      }
+      mat.needsUpdate = true;
+    });
+  }
 
-        function startPeer() {
-            document.getElementById("status").innerText = "🟡 กำลังค้นหาเครื่องเกม ID: " + hostId;
-            
-            // สร้าง Peer สำหรับมือถือ
-            peer = new Peer();
+  function fitModelToScreen(model) {
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    model.position.sub(center);
+    if (maxDim > 0) {
+      const scale = 2.5 / maxDim;
+      model.scale.set(scale, scale, scale);
+    }
+  }
 
-            peer.on('open', (id) => {
-                // ยิงคำขอเชื่อมต่อไปยัง Unity WebGL ตาม gameId
-                conn = peer.connect(hostId);
+  // 3. Import Model & Textures
+  document.getElementById('file-model').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-                conn.on('open', () => {
-                    document.getElementById("status").innerText = "🟢 เชื่อมต่อสำเร็จ! เหวี่ยงมือถือได้เลย";
-                    document.getElementById("status").style.color = "#4ade80";
-                    startSendingMotion();
-                });
+    const fileName = file.name.toLowerCase();
+    const reader = new FileReader();
 
-                conn.on('error', (err) => {
-                    document.getElementById("status").innerText = "🔴 เชื่อมต่อไม่สำเร็จ: " + err;
-                });
-            });
+    reader.onload = function(event) {
+      if (loadedModel) scene.remove(loadedModel);
 
-            peer.on('error', (err) => {
-                document.getElementById("status").innerText = "🔴 เกิดข้อผิดพลาด: " + err.type;
-            });
+      try {
+        if (fileName.endsWith('.obj')) {
+          const loader = new THREE.OBJLoader();
+          setupLoadedModel(loader.parse(event.target.result));
+        } else if (fileName.endsWith('.fbx')) {
+          const loader = new THREE.FBXLoader();
+          setupLoadedModel(loader.parse(event.target.result, ''));
         }
+      } catch (err) {
+        alert("ไฟล์มีปัญหา ลองแปลงเป็น .OBJ ดูก่อนนะคะ");
+      }
+    };
 
-        function startSendingMotion() {
-            window.addEventListener('devicemotion', (event) => {
-                if (!conn || !conn.open) return;
+    if (fileName.endsWith('.fbx')) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
+  });
 
-                let gx = event.rotationRate ? event.rotationRate.beta || 0 : 0;
-                let gy = event.rotationRate ? event.rotationRate.gamma || 0 : 0;
-                let gz = event.rotationRate ? event.rotationRate.alpha || 0 : 0;
-
-                // ส่งค่า Gyro เป็นข้อความชุดเดียวกันเข้า Unity
-                let dataString = `${gx.toFixed(2)},${gy.toFixed(2)},${gz.toFixed(2)},0,0,0`;
-                conn.send(dataString);
-            });
+  function setupLoadedModel(model) {
+    model.traverse((child) => {
+      if (child.isMesh) {
+        child.material = currentMaterial;
+        if (child.geometry && !child.geometry.attributes.uv2 && child.geometry.attributes.uv) {
+          child.geometry.attributes.uv2 = child.geometry.attributes.uv;
         }
-    </script>
+      }
+    });
+    fitModelToScreen(model);
+    loadedModel = model;
+    scene.add(loadedModel);
+  }
+
+  document.getElementById('file-texture').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0, textureCanvas.width, textureCanvas.height);
+      baseTexture.needsUpdate = true;
+      saveState();
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  document.getElementById('file-normal').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const loader = new THREE.TextureLoader();
+    loader.load(URL.createObjectURL(file), (tex) => {
+      normalTexture = tex;
+      updateMaterialTextures();
+    });
+  });
+
+  document.getElementById('file-ao').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const loader = new THREE.TextureLoader();
+    loader.load(URL.createObjectURL(file), (tex) => {
+      aoTexture = tex;
+      updateMaterialTextures();
+    });
+  });
+
+  // Custom Brush Loader
+  document.getElementById('brush-type').addEventListener('change', (e) => {
+    const isCustom = e.target.value === 'custom';
+    document.getElementById('btn-custom-brush-file').style.display = isCustom ? 'inline-block' : 'none';
+  });
+
+  document.getElementById('file-brush').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = function() {
+      customBrushImage = img;
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  document.getElementById('normal-scale').addEventListener('input', updateMaterialTextures);
+  document.getElementById('ao-intensity').addEventListener('input', updateMaterialTextures);
+
+  document.getElementById('select-shading').addEventListener('change', (e) => {
+    currentMaterial = materials[e.target.value];
+    if (loadedModel) {
+      loadedModel.traverse((child) => {
+        if (child.isMesh) child.material = currentMaterial;
+      });
+    }
+  });
+
+  // 4. Painting Logic with Custom Brush & Spacing
+  function drawStamp(canvasX, canvasY, size, color, opacity, useCustom) {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+
+    if (useCustom && customBrushImage) {
+      const tintedBrush = prepareTintedBrush(color, size);
+      if (tintedBrush) {
+        ctx.drawImage(tintedBrush, canvasX - size / 2, canvasY - size / 2, size, size);
+      }
+    } else {
+      ctx.fillStyle = isEraser ? "#ffffff" : color;
+      ctx.beginPath();
+      ctx.arc(canvasX, canvasY, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBrushAtUV(uvX, uvY) {
+    const size = parseFloat(document.getElementById('brush-size').value);
+    const opacity = parseFloat(document.getElementById('brush-opacity').value);
+    const color = document.getElementById('brush-color').value;
+    const useCustom = document.getElementById('brush-type').value === 'custom' && customBrushImage;
+
+    const currentX = uvX * textureCanvas.width;
+    const currentY = (1 - uvY) * textureCanvas.height;
+
+    const spacing = parseFloat(document.getElementById('brush-spacing').value);
+
+    if (!lastUV) {
+      drawStamp(currentX, currentY, size, color, opacity, useCustom);
+      if (isSymmetry) drawStamp(textureCanvas.width - currentX, currentY, size, color, opacity, useCustom);
+    } else {
+      const startX = lastUV.x * textureCanvas.width;
+      const startY = (1 - lastUV.y) * textureCanvas.height;
+      const dist = Math.hypot(currentX - startX, currentY - startY);
+
+      if (dist >= spacing) {
+        const steps = Math.floor(dist / spacing);
+        for (let i = 1; i <= steps; i++) {
+          const interpX = startX + (currentX - startX) * (i / steps);
+          const interpY = startY + (currentY - startY) * (i / steps);
+          drawStamp(interpX, interpY, size, color, opacity, useCustom);
+          if (isSymmetry) drawStamp(textureCanvas.width - interpX, interpY, size, color, opacity, useCustom);
+        }
+      } else {
+        return; // ไม่วาดถ้ายังไม่ถึง Spacing
+      }
+    }
+
+    lastUV = { x: uvX, y: uvY };
+    baseTexture.needsUpdate = true;
+    hasPaintedThisStroke = true;
+  }
+
+  function paint(e) {
+    if (!isPaintingMode || !loadedModel) return;
+
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    if (!clientX || !clientY) return;
+
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(loadedModel, true);
+
+    if (intersects.length > 0 && intersects[0].uv) {
+      const uv = intersects[0].uv;
+      drawBrushAtUV(uv.x, uv.y);
+    }
+  }
+
+  // Pointer Handlers
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return;
+    isMouseDown = true;
+    hasPaintedThisStroke = false;
+    lastUV = null;
+    if (isPaintingMode) paint(e);
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (isMouseDown && isPaintingMode) paint(e);
+  });
+
+  window.addEventListener('pointerup', () => {
+    if (isMouseDown && hasPaintedThisStroke) saveState();
+    isMouseDown = false;
+    lastUV = null;
+  });
+
+  // 5. Shortcuts & UI Actions
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) { e.preventDefault(); redo(); }
+    else if (e.code === 'Space') { e.preventDefault(); toggleMode(); }
+    else if (e.key === 'e' || e.key === 'E') { toggleEraser(); }
+    else if (e.key === 's' || e.key === 'S') { toggleSymmetry(); }
+  });
+
+  function toggleMode() {
+    isPaintingMode = !isPaintingMode;
+    controls.enabled = !isPaintingMode;
+    const btn = document.getElementById('btn-mode');
+    btn.innerText = isPaintingMode ? "โหมด: ระบาย 🎨" : "โหมด: หมุนมุมมอง 🔄";
+    btn.style.background = isPaintingMode ? "#ff2a74" : "#29b6f6";
+  }
+
+  function toggleEraser() {
+    isEraser = !isEraser;
+    const btn = document.getElementById('btn-eraser');
+    btn.innerText = isEraser ? "ยางลบ 🧹" : "พู่กัน 🖌️";
+    btn.style.background = isEraser ? "#ff9800" : "#555";
+  }
+
+  function toggleSymmetry() {
+    isSymmetry = !isSymmetry;
+    const btn = document.getElementById('btn-symmetry');
+    btn.innerText = isSymmetry ? "สมมาตร: เปิด 🪞" : "สมมาตร: ปิด 🪞";
+    btn.style.background = isSymmetry ? "#e91e63" : "#00bcd4";
+  }
+
+  document.getElementById('btn-undo').addEventListener('click', undo);
+  document.getElementById('btn-redo').addEventListener('click', redo);
+  document.getElementById('btn-mode').addEventListener('click', toggleMode);
+  document.getElementById('btn-eraser').addEventListener('click', toggleEraser);
+  document.getElementById('btn-symmetry').addEventListener('click', toggleSymmetry);
+
+  document.getElementById('btn-save').addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'texture_painted.png';
+    link.href = textureCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+</script>
 </body>
 </html>
