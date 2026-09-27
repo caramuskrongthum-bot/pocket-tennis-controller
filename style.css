@@ -1,554 +1,527 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html,
-body {
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-    background: #0e0e1c;
-    color: #0e0e1c;
-    font-family: "Edu QLD Hand", cursive;
-}
-
-
 /* =========================================================
-   MAIN CONTAINER
+   ELEMENTS
 ========================================================= */
 
-.container {
-    position: relative;
-    z-index: 10;
+const videoBgIframe =
+    document.getElementById('videoBgIframe');
 
-    width: 100%;
-    height: 100vh;
+const videoBgThumbnail =
+    document.getElementById('videoBgThumbnail');
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+const videoBgBlack =
+    document.getElementById('videoBgBlack');
 
-    perspective: 1000px;
 
-}
+const cards =
+    document.querySelectorAll('.game-card');
+
+const gameNavigation = document.getElementById('gameNavigation');
+const gamePreviewPanel = document.getElementById('gamePreviewPanel');
+const gamePreviewIframe = document.getElementById('gamePreviewIframe');
+
+let previewLoadTimer = null;
+
+
+let currentIndex = 0;
+
+let scrollAccumulator = 0;
+
+const threshold = 60;
+
+let videoLoadTimer = null;
+
+cards.forEach((card, index) => {
+    const title = card.querySelector('.game-title')?.textContent.trim() || `Game ${index + 1}`;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.title = title;
+    button.setAttribute('aria-label', `Show ${title}`);
+    const thumbnail = card.querySelector('.game-thumb img');
+    if (thumbnail) {
+        const image = document.createElement('img');
+        image.src = thumbnail.src;
+        image.alt = title;
+        button.appendChild(image);
+    } else {
+        button.textContent = title;
+    }
+    button.addEventListener('click', () => {
+        currentIndex = index;
+        updateCards();
+    });
+    gameNavigation.appendChild(button);
+});
+
 
 
 /* =========================================================
-   CARD STACK
+   GET YOUTUBE ID
 ========================================================= */
 
-.card-stack {
-    position: relative;
-    width: 380px;
-    height: 520px;
+function getYouTubeId(url) {
+
+    if (!url) return '';
+
+    const match = url.match(
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/
+    );
+
+    return match ? match[1] : '';
 }
 
 
+
 /* =========================================================
-   GAME CARD
+   GET CURRENT GAME THUMBNAIL
 ========================================================= */
 
-.game-card {
-    position: absolute;
+function getCurrentThumbnail(card) {
 
-    top: 0;
-    left: 0;
+    if (!card) return '';
 
-    width: 100%;
-    height: 100%;
+    const image =
+        card.querySelector('.game-thumb img');
 
-    background: rgba(255, 255, 255, 1);
+    if (image && image.src) {
+        return image.src;
+    }
 
-    border-radius: 5px;
-
-    overflow: hidden;
-
-    box-shadow:
-        0 15px 35px rgba(0, 0, 0, 0.5);
-
-    display: flex;
-    flex-direction: column;
-
-    transition:
-        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-        opacity 0.25s ease,
-        filter 0.25s ease;
-
-    cursor: pointer;
-    
+    return '';
 }
+
 
 
 /* =========================================================
-   GAME THUMBNAIL
-========================================================= */
-
-.game-thumb {
-    width: 90%;
-    height: 50%;
-
-    background-color: #202021;
-
-    overflow: hidden;
-
-    border-radius: 15px;
-
-    margin: 20px auto 0 auto;
-}
-
-.game-thumb img {
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
-}
-
-
-/* =========================================================
-   GAME INFO
-========================================================= */
-
-.game-info {
-    padding: 20px;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 10px;
-
-    flex-grow: 1;
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 1),
-            rgba(200, 200, 200, 1)
-        );
-}
-
-
-/* =========================================================
-   TITLE
-========================================================= */
-
-.game-title {
-    font-size: 1.25rem;
-    font-weight: bold;
-
-    text-decoration: none;
-
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-
-    overflow: hidden;
-
-    color: #0e0e1c;
-
-    transition:
-        color 0.2s ease,
-        font-size 0.2s ease;
-}
-
-.game-title:hover {
-    color: #202021;
-    font-size: 1.26rem;
-}
-
-
-/* =========================================================
-   META
-========================================================= */
-
-.game-meta {
-    font-size: 0.9rem;
-
-    color: #202021;
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-
-/* =========================================================
-   PLAY BUTTON
-========================================================= */
-
-.btn-play {
-    margin-top: auto;
-
-    padding: 50px;
-    background: url("BTN_TEXTURE/Ui_Bg_Panel.png") center / 100% 100% no-repeat;
-
-    color: white;
-
-    text-align: center;
-
-    border-radius: 8px;
-
-    text-decoration: none;
-
-    font-weight: bold;
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease;
-}
-
-.btn-play:hover {
-    transform: translateY(-2px);
-}
-
-
-/* =========================================================
-   INSTRUCTIONS
-========================================================= */
-
-.instructions {
-    position: absolute;
-
-    bottom: 20px;
-
-    width: 100%;
-
-    text-align: center;
-
-    color: #777;
-
-    font-size: 0.9rem;
-
-    pointer-events: none;
-
-    z-index: 20;
-}
-
-
-/* =========================================================
-   DYNAMIC GAME BACKGROUND
+   UPDATE BACKGROUND
+   
+   Flow:
    
    Thumbnail
-        ↓
+       ↓
    YouTube Video
-========================================================= */
-
-.video-background {
-    position: fixed;
-
-    inset: -35px;
-
-    width: calc(100% + 70px);
-    height: calc(100% + 70px);
-
-    z-index: 0;
-
-    overflow: hidden;
-
-    background: #000;
-
-    pointer-events: none;
-}
-
-
-/* =========================================================
-   THUMBNAIL BACKGROUND
-========================================================= */
-
-.video-bg-thumbnail {
-    position: absolute;
-
-    inset: 0;
-
-    background-color: #000;
-
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-
-    /*
-     * Blur เพื่อให้ Thumbnail
-     * กลายเป็น Background แบบ cinematic
-     */
-    filter: blur(18px);
-
-    transform: scale(1.08);
-
-    opacity: 0;
-
-    transition:
-        opacity 0.45s ease;
-
-    z-index: 0;
-}
-
-
-/* =========================================================
-   BLACK FALLBACK
    
-   ใช้เฉพาะกรณีไม่มี Thumbnail
+   ถ้าไม่มี Video:
+   
+   Thumbnail อยู่ต่อ
 ========================================================= */
 
-.video-bg-black {
-    position: absolute;
+function updateVideoBackground() {
 
-    inset: 0;
+    const card =
+        cards[currentIndex];
 
-    background: #000;
+    if (!card) return;
 
-    opacity: 0;
 
-    transition:
-        opacity 0.45s ease;
+    /* -----------------------------------------------------
+       Cancel previous video timer
+    ----------------------------------------------------- */
 
-    z-index: 1;
+    clearTimeout(videoLoadTimer);
+
+
+    /* -----------------------------------------------------
+       Get Thumbnail
+    ----------------------------------------------------- */
+
+    const thumbnailURL =
+        getCurrentThumbnail(card);
+
+
+    /* -----------------------------------------------------
+       Show Thumbnail
+    ----------------------------------------------------- */
+
+    if (thumbnailURL) {
+
+        videoBgThumbnail.style.backgroundImage =
+            `url("${thumbnailURL}")`;
+
+        videoBgThumbnail.style.opacity = '1';
+
+        videoBgBlack.style.opacity = '0';
+
+    } else {
+
+        videoBgThumbnail.style.backgroundImage =
+            'none';
+
+        videoBgThumbnail.style.opacity = '0';
+
+        videoBgBlack.style.opacity = '1';
+    }
+
+
+    /* -----------------------------------------------------
+       Get Video
+    ----------------------------------------------------- */
+
+    const videoUrl =
+        card.dataset.video || '';
+
+    const videoId =
+        getYouTubeId(videoUrl);
+
+
+    /* -----------------------------------------------------
+       No Video
+       
+       Thumbnail จะอยู่ด้านหลังต่อ
+    ----------------------------------------------------- */
+
+    if (!videoId) {
+
+        videoBgIframe.style.opacity = '0';
+
+        videoLoadTimer = setTimeout(() => {
+
+            if (cards[currentIndex] === card) {
+                videoBgIframe.src = '';
+            }
+
+        }, 700);
+
+        return;
+    }
+
+
+    /* -----------------------------------------------------
+       Video Exists
+       
+       ซ่อน Video ก่อน
+       เพื่อให้ Thumbnail ยังเห็นอยู่
+    ----------------------------------------------------- */
+
+    videoBgIframe.style.opacity = '0';
+
+
+    /* -----------------------------------------------------
+       YouTube Embed URL
+    ----------------------------------------------------- */
+
+    const embedUrl =
+        `https://www.youtube.com/embed/${videoId}` +
+        `?autoplay=1` +
+        `&mute=1` +
+        `&loop=1` +
+        `&playlist=${videoId}` +
+        `&controls=0` +
+        `&rel=0` +
+        `&modestbranding=1` +
+        `&playsinline=1`;
+
+
+    /* -----------------------------------------------------
+       Load Video
+    ----------------------------------------------------- */
+
+    videoBgIframe.src =
+        embedUrl;
+
+
+    /* -----------------------------------------------------
+       Fade Video over Thumbnail
+    ----------------------------------------------------- */
+
+    videoLoadTimer = setTimeout(() => {
+
+        if (cards[currentIndex] === card) {
+
+            videoBgIframe.style.opacity = '1';
+
+        }
+
+    }, 900);
+
 }
 
 
+
 /* =========================================================
-   YOUTUBE VIDEO
+   UPDATE GAME PREVIEW (side panel)
+
+   มี YouTube video → panel เลื่อนออกมาจาก card แบบ smooth
+   ไม่มี video → ซ่อน panel ไว้เฉยๆ
 ========================================================= */
 
-.video-background iframe {
-    position: absolute;
+function updateGamePreview() {
 
-    width: 100%;
-    height: 100%;
+    if (!gamePreviewIframe || !gamePreviewPanel) return;
 
-    left: 0;
-    top: 0;
+    const card =
+        cards[currentIndex];
 
-    border: 0;
+    if (!card) return;
 
-    opacity: 0;
+
+    clearTimeout(previewLoadTimer);
+
+    const videoUrl =
+        card.dataset.video || '';
+
+    const videoId =
+        getYouTubeId(videoUrl);
+
+
+    /* -----------------------------------------------------
+       No Video → slide the panel back out of view
+    ----------------------------------------------------- */
+
+    if (!videoId) {
+
+        gamePreviewPanel.classList.remove('is-visible');
+
+        gamePreviewIframe.classList.remove('visible');
+
+        previewLoadTimer = setTimeout(() => {
+
+            if (cards[currentIndex] === card) {
+                gamePreviewIframe.src = '';
+            }
+
+        }, 450);
+
+        return;
+    }
+
+
+    /* -----------------------------------------------------
+       Video Exists → load embed, slide panel out, fade video in
+    ----------------------------------------------------- */
+
+    gamePreviewIframe.classList.remove('visible');
+
+    const embedUrl =
+        `https://www.youtube.com/embed/${videoId}` +
+        `?autoplay=1` +
+        `&mute=1` +
+        `&loop=1` +
+        `&playlist=${videoId}` +
+        `&controls=0` +
+        `&rel=0` +
+        `&modestbranding=1` +
+        `&playsinline=1`;
+
+    gamePreviewIframe.src =
+        embedUrl;
 
     /*
-     * ขยายออกนิดหนึ่งเพื่อไม่ให้เห็นขอบ
+     * เลื่อน panel ออกมาทันที ส่วนตัววิดีโอ (iframe)
+     * จะ fade in ทีหลังตอนโหลดเสร็จ
      */
-    transform: scale(1.18);
 
-    /*
-     * Video Background จะเบลอนิด ๆ
-     * เพื่อไม่แย่งความสนใจจาก Card
-     */
-    filter: blur(15px);
+    gamePreviewPanel.classList.add('is-visible');
 
-    transition:
-        opacity 0.7s ease;
+    previewLoadTimer = setTimeout(() => {
 
-    z-index: 2;
+        if (cards[currentIndex] === card) {
+
+            gamePreviewIframe.classList.add('visible');
+
+        }
+
+    }, 500);
+
 }
 
 
+
 /* =========================================================
-   DARK OVERLAY
+   UPDATE CARDS
 ========================================================= */
 
-.video-bg-overlay {
-    position: absolute;
+function updateCards() {
 
-    inset: 0;
+    gameNavigation.querySelectorAll('button').forEach((button, index) => {
+        button.classList.toggle('active', index === currentIndex);
+        if (index === currentIndex) button.setAttribute('aria-current', 'true');
+        else button.removeAttribute('aria-current');
+    });
 
-    background:
-        linear-gradient(
-            rgba(0, 0, 0, 0.48),
-            rgba(0, 0, 0, 0.58)
+    updateGamePreview();
+
+    cards.forEach((card, index) => {
+
+        const offset =
+            index - currentIndex;
+
+
+        /* -------------------------------------------------
+           CURRENT CARD
+        ------------------------------------------------- */
+
+        if (offset === 0) {
+
+            card.style.transform =
+                'translateY(0) scale(1) rotate(0deg)';
+
+            card.style.opacity =
+                '1';
+
+            card.style.filter =
+                'blur(0px)';
+
+            card.style.pointerEvents =
+                'auto';
+        }
+
+
+        /* -------------------------------------------------
+           CARDS BELOW
+        ------------------------------------------------- */
+
+        else if (offset > 0) {
+
+            card.style.transform =
+                `translateY(${offset * 30}px) ` +
+                `scale(${1 - offset * 0.05}) ` +
+                `rotate(${offset * 2}deg)`;
+
+            card.style.opacity =
+                `${Math.max(
+                    1 - offset * 0.3,
+                    0
+                )}`;
+
+            card.style.filter =
+                `blur(${offset * 2}px)`;
+
+            card.style.pointerEvents =
+                'none';
+        }
+
+
+        /* -------------------------------------------------
+           CARDS ABOVE
+        ------------------------------------------------- */
+
+        else {
+
+            card.style.transform =
+                `translateY(${offset * 150}px) ` +
+                `scale(1.1) ` +
+                `rotate(${offset * 10}deg)`;
+
+            card.style.opacity =
+                '0';
+
+            card.style.filter =
+                'blur(5px)';
+
+            card.style.pointerEvents =
+                'none';
+        }
+
+    });
+
+
+    /* -----------------------------------------------------
+       Update Background
+    ----------------------------------------------------- */
+
+    updateVideoBackground();
+
+}
+
+
+
+/* =========================================================
+   MOUSE WHEEL
+========================================================= */
+
+window.addEventListener(
+    'wheel',
+    (e) => {
+
+        scrollAccumulator +=
+            e.deltaY;
+
+
+        /* -------------------------------------------------
+           SCROLL DOWN
+        ------------------------------------------------- */
+
+        if (
+            scrollAccumulator >= threshold
+        ) {
+
+            if (
+                currentIndex <
+                cards.length - 1
+            ) {
+
+                currentIndex++;
+
+            }
+
+            scrollAccumulator = 0;
+
+            updateCards();
+        }
+
+
+        /* -------------------------------------------------
+           SCROLL UP
+        ------------------------------------------------- */
+
+        else if (
+            scrollAccumulator <= -threshold
+        ) {
+
+            if (
+                currentIndex > 0
+            ) {
+
+                currentIndex--;
+
+            }
+
+            scrollAccumulator = 0;
+
+            updateCards();
+        }
+
+    },
+    {
+        passive: true
+    }
+);
+
+
+
+/* =========================================================
+   SNAP SYSTEM
+========================================================= */
+
+let snapTimeout;
+
+
+window.addEventListener(
+    'wheel',
+    () => {
+
+        clearTimeout(
+            snapTimeout
         );
 
-    z-index: 3;
-}
+
+        snapTimeout =
+            setTimeout(() => {
+
+                scrollAccumulator = 0;
+
+            }, 150);
+
+    },
+    {
+        passive: true
+    }
+);
+
 
 
 /* =========================================================
-   MOBILE
+   INITIALIZE
 ========================================================= */
 
-@media (max-width: 600px) {
-
-    .card-stack {
-        width: 88vw;
-        height: 120vw;
-
-        max-width: 380px;
-        max-height: 520px;
-    }
-
-    .game-info {
-        padding: 16px;
-    }
-
-    .instructions {
-        font-size: 0.8rem;
-        padding: 0 20px;
-    }
-
-}
-
-/* Navigation and page layout */
-.side-nav {
-    position: fixed;
-    z-index: 30;
-    inset: 50% auto auto 20px;
-    transform: translateY(-50%);
-    height: 90vh;
-    max-height: 90vh;
-    overflow-y: auto;
-    display: grid;
-    align-content: start;
-    gap: 10px;
-    padding: 12px;
-    border: 1px solid rgba(255, 255, 255, .25);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, .12);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, .3);
-}
-
-.side-nav button {
-    width: 64px;
-    height: 54px;
-    padding: 4px;
-    border: 0;
-    border-radius: 14px;
-    color: white;
-    background: transparent;
-    font: inherit;
-    cursor: pointer;
-}
-
-.side-nav button img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 10px;
-}
-
-.side-nav button.active,
-.side-nav button:hover {
-    background: rgba(255, 255, 255, .2);
-}
-
-.page { display: none; position: fixed; inset: 0; }
-.page.active { display: block; }
-
-.page-story {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 30px 30px 30px 110px;
-    color: white;
-    background: radial-gradient(ellipse at top right, #493c88, #0e0e1c 65%);
-}
-
-.page-story.active { display: flex; }
-
-.story-panel {
-    width: min(720px, 100%);
-    padding: 36px;
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: 24px;
-    background: rgba(255,255,255,.1);
-    backdrop-filter: blur(18px);
-}
-
-.story-panel h1 { margin-bottom: 12px; }
-.story-panel p { margin-bottom: 18px; color: #ddd; }
-
-.story-panel textarea {
-    width: 100%;
-    min-height: 260px;
-    padding: 16px;
-    border: 1px solid rgba(255,255,255,.25);
-    border-radius: 14px;
-    color: white;
-    background: rgba(0,0,0,.25);
-    font: inherit;
-    resize: vertical;
-}
-
-.page-games { padding-left: 100px; }
-.page-games .container { gap: 32px; }
-
-.game-preview {
-    position: relative;
-
-    width: min(42vw, 620px);
-    height: min(60vh, 460px);
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: 18px;
-    background: #000;
-    box-shadow: 0 15px 35px rgba(0,0,0,.5);
-
-    opacity: 0;
-    transform: translateX(-60px) scale(0.96);
-
-    transition:
-        opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-
-    pointer-events: none;
-}
-
-.game-preview.is-visible {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-    pointer-events: auto;
-}
-
-.game-preview iframe {
-    width: 100%;
-    height: 100%;
-    border: 0;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-}
-
-.game-preview iframe.visible {
-    opacity: 1;
-}
-
-.side-nav::before {
-    content: "GAMES";
-    color: rgba(255,255,255,.65);
-    font: 700 .65rem Arial, sans-serif;
-    letter-spacing: .16em;
-    text-align: center;
-}
-.side-nav button {
-    min-width: 46px;
-    min-height: 42px;
-    border: 1px solid rgba(255,255,255,.12);
-    transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
-}
-.side-nav button:hover { transform: translateX(3px); }
-.side-nav button.active {
-    background: linear-gradient(135deg, rgba(173,145,255,.6), rgba(90,191,255,.22));
-    box-shadow: inset 0 0 16px rgba(255,255,255,.12), 0 0 18px rgba(126,93,255,.25);
-}
-.game-preview::after {
-    content: "GAMEPLAY PREVIEW";
-    position: absolute;
-    left: 14px;
-    bottom: 14px;
-    padding: 7px 10px;
-    border: 1px solid rgba(255,255,255,.22);
-    border-radius: 20px;
-    color: white;
-    background: rgba(10,10,20,.45);
-    backdrop-filter: blur(10px);
-    font: 600 .65rem Arial, sans-serif;
-    letter-spacing: .12em;
-    pointer-events: none;
-}
-
-@media (max-width: 800px) {
-    .page-games { padding-left: 0; }
-    .page-games .container { gap: 0; }
-    .game-preview { display: none; }
-    .side-nav { left: 8px; padding: 6px; }
-    .side-nav button { padding: 10px; }
-}
+updateCards();
