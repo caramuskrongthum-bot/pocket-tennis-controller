@@ -16,8 +16,8 @@ const cards =
     document.querySelectorAll('.game-card');
 
 const gameNavigation = document.getElementById('gameNavigation');
+const gamePreviewPanel = document.getElementById('gamePreviewPanel');
 const gamePreviewIframe = document.getElementById('gamePreviewIframe');
-const gamePreviewEmpty = document.getElementById('gamePreviewEmpty');
 
 let previewLoadTimer = null;
 
@@ -240,13 +240,13 @@ function updateVideoBackground() {
 /* =========================================================
    UPDATE GAME PREVIEW (side panel)
 
-   ใช้ data-video ของ card เดียวกับ background
-   ถ้าไม่มี video → โชว์ "No preview video"
+   มี YouTube video → panel เลื่อนออกมาจาก card แบบ smooth
+   ไม่มี video → ซ่อน panel ไว้เฉยๆ
 ========================================================= */
 
 function updateGamePreview() {
 
-    if (!gamePreviewIframe) return;
+    if (!gamePreviewIframe || !gamePreviewPanel) return;
 
     const card =
         cards[currentIndex];
@@ -264,14 +264,14 @@ function updateGamePreview() {
 
 
     /* -----------------------------------------------------
-       No Video → show empty state
+       No Video → slide the panel back out of view
     ----------------------------------------------------- */
 
     if (!videoId) {
 
-        gamePreviewIframe.classList.remove('visible');
+        gamePreviewPanel.classList.remove('is-visible');
 
-        gamePreviewEmpty?.classList.remove('hidden');
+        gamePreviewIframe.classList.remove('visible');
 
         previewLoadTimer = setTimeout(() => {
 
@@ -279,14 +279,14 @@ function updateGamePreview() {
                 gamePreviewIframe.src = '';
             }
 
-        }, 400);
+        }, 450);
 
         return;
     }
 
 
     /* -----------------------------------------------------
-       Video Exists → load embed, fade in
+       Video Exists → load embed, slide panel out, fade video in
     ----------------------------------------------------- */
 
     gamePreviewIframe.classList.remove('visible');
@@ -305,13 +305,18 @@ function updateGamePreview() {
     gamePreviewIframe.src =
         embedUrl;
 
+    /*
+     * เลื่อน panel ออกมาทันที ส่วนตัววิดีโอ (iframe)
+     * จะ fade in ทีหลังตอนโหลดเสร็จ
+     */
+
+    gamePreviewPanel.classList.add('is-visible');
+
     previewLoadTimer = setTimeout(() => {
 
         if (cards[currentIndex] === card) {
 
             gamePreviewIframe.classList.add('visible');
-
-            gamePreviewEmpty?.classList.add('hidden');
 
         }
 
