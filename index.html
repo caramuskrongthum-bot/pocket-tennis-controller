@@ -1,514 +1,1416 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Painter Pro - Custom Brush & PBR</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 0; overflow: hidden; background: #111; font-family: sans-serif; color: #fff; user-select: none; }
-    #canvas-container { width: 100vw; height: 100vh; position: relative; }
-    
-    .ui-panel {
-      position: absolute; top: 10px; left: 10px; z-index: 10;
-      background: rgba(20, 20, 20, 0.94); backdrop-filter: blur(14px);
-      padding: 12px; border-radius: 14px; display: flex; flex-direction: column; gap: 8px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.8); max-width: 95vw; border: 1px solid rgba(255,255,255,0.1);
-    }
-    .ui-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    label { font-size: 11px; font-weight: bold; color: #ddd; }
-    
-    button, .file-btn, select {
-      background: #ff2a74; color: white; border: none; padding: 6px 10px;
-      border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-block;
-    }
-    select { background: #333; outline: none; }
-    button:disabled { background: #444 !important; color: #888; cursor: not-allowed; }
-    button:active:not(:disabled), .file-btn:active { opacity: 0.8; }
-    input[type="file"] { display: none; }
-    input[type="color"] { border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; background: transparent; }
-    input[type="range"] { width: 60px; }
-    .shortcut-info { font-size: 10px; color: #aaa; margin-top: 2px; line-height: 1.3; }
-  </style>
 
-  <!-- Three.js + Loaders -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Edu+QLD+Hand:wght@400..700&display=swap" rel="stylesheet">
+
+    <title>KrongthumDev - Game Cards Viewer</title>
+
+    <link rel="stylesheet" href="style.css">
 </head>
+
+
 <body>
 
-<div id="canvas-container">
-  <div class="ui-panel">
-    <!-- Row 1: Load Models & Maps -->
-    <div class="ui-row">
-      <label class="file-btn" style="background:#8e24aa;">📦 โหลด 3D (.obj/.fbx)
-        <input type="file" id="file-model" accept=".obj, .fbx">
-      </label>
-      <label class="file-btn" style="background:#0288d1;">🖼️ Base Color
-        <input type="file" id="file-texture" accept="image/*">
-      </label>
-      <label class="file-btn" style="background:#43a047;">🟣 Normal
-        <input type="file" id="file-normal" accept="image/*">
-      </label>
-      <label class="file-btn" style="background:#f57c00;">⚪ AO
-        <input type="file" id="file-ao" accept="image/*">
-      </label>
+    <nav class="side-nav" id="gameNavigation" aria-label="Game navigation"></nav>
+
+
+    <!-- =========================================================
+         DYNAMIC GAME BACKGROUND
+    ========================================================= -->
+
+    <div class="video-background" id="videoBackground">
+
+        <!-- Game Thumbnail -->
+        <div
+            class="video-bg-thumbnail"
+            id="videoBgThumbnail">
+        </div>
+
+
+        <!-- Black Fallback -->
+        <div
+            class="video-bg-black"
+            id="videoBgBlack">
+        </div>
+
+
+        <!-- YouTube Video -->
+        <iframe
+            id="videoBgIframe"
+            src=""
+            title="Game Background"
+            frameborder="0"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            referrerpolicy="strict-origin-when-cross-origin">
+        </iframe>
+
+
+        <!-- Dark Overlay -->
+        <div class="video-bg-overlay"></div>
+
     </div>
 
-    <!-- Row 2: Shading & PBR Adjustments -->
-    <div class="ui-row">
-      <label>แสง:</label>
-      <select id="select-shading">
-        <option value="lit">Lit (มาตรฐาน)</option>
-        <option value="unlit">Unlit (สีตรง)</option>
-        <option value="toon">Toon (อนิเมะ)</option>
-      </select>
-      <label>นูน Normal:</label>
-      <input type="range" id="normal-scale" min="0" max="3" step="0.1" value="1">
-      <label>เงา AO:</label>
-      <input type="range" id="ao-intensity" min="0" max="3" step="0.1" value="1">
+
+
+    <!-- =========================================================
+         MAIN
+    ========================================================= -->
+
+    <div class="container">
+
+        <div
+            class="card-stack"
+            id="cardStack">
+
+
+            <!-- =================================================
+                 1. FOG | DEMO
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/2QTkE0JIUAA?si=Ez8917HFKQkPX6JX"
+                style="z-index: 25;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#000000;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzMwMjM5NTIyLnBuZw==/315x250%23c/zlo1jo.png"
+                        alt="FOG | DEMO">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/fog"
+                        target="_blank">
+                        FOG | DEMO
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#4CAF50;">
+                            Play in browser
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/fog"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 2. BLACK V3IN
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:24;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#7e5dff;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI5NDkyMDI0LnBuZw==/315x250%23c/Wl39Qi.png"
+                        alt="BLACK V3IN">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/blackvein"
+                        target="_blank">
+                        BLACK V3IN
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#ffaa00;">
+                            Fighting
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/blackvein"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 3. Dumb Heist
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:23;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#000000;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI4NzgzMjY2LnBuZw==/315x250%23c/zD%2BZ9c.png"
+                        alt="Dumb Heist">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://bright2522.itch.io/dumb-heist"
+                        target="_blank">
+                        Dumb Heist
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            bright2522
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Windows
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://bright2522.itch.io/dumb-heist"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 4. CTHULHU
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:22;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#1a1c27;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI4NzY2MzU0LnBuZw==/315x250%23c/Mdyzz%2F.png"
+                        alt="C T H U L H U">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/cthulhu"
+                        target="_blank">
+                        C T H U L H U | Full demo in des! | TH ONLY [ONLINE]
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#ffaa00;">
+                            Action
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/cthulhu"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 5. Yokai no Hana
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:21;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#161825;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI4NjE5Njg4LnBuZw==/315x250%23c/Q1JpHQ.png"
+                        alt="Yokai no Hana">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/smorzando"
+                        target="_blank">
+                        Yokai no Hana (妖怪の花) | 1st DEMO
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#ffaa00;">
+                            Action
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/smorzando"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 6. BK Flood
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:20;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#213766;">
+
+                    <div
+                        style="
+                            display:flex;
+                            justify-content:center;
+                            align-items:center;
+                            height:100%;
+                            color:#fff;
+                            font-size:3rem;">
+                        ⭐
+                    </div>
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/bk-flood"
+                        target="_blank">
+                        BK Flood
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#4CAF50;">
+                            Play in browser
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/bk-flood"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 7. Goo Goo Ga Ga Guard
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:19;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#152240;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI3MjkxMTU3LnBuZw==/315x250%23c/01VKu3.png"
+                        alt="Goo Goo Ga Ga Guard">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/goo-goo-ga-ga-guard"
+                        target="_blank">
+                        Goo Goo Ga Ga Guard (By KnUnity)
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/goo-goo-ga-ga-guard"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 8. Escape Rolling
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/JUrYI2oNBWc?si=LNVk6y0LiPgvK5FV"
+                style="z-index:18;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#d58331;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2OTMwMDY4LnBuZw==/315x250%23c/2qCyNK.png"
+                        alt="Escape Rolling">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/escape-rolling"
+                        target="_blank">
+                        Escape Rolling
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#ffaa00;">
+                            Action
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/escape-rolling"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 9. Coconut Chan Simulator
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:17;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#eeeeee;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2ODM3NzM2LnBuZw==/315x250%23c/LTU2rt.png"
+                        alt="Coconut Chan Simulator">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/coconut-chan-simulator"
+                        target="_blank">
+                        Coconut Chan Simulator
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/coconut-chan-simulator"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 10. Kanchananukroh Online
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:16;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#1c1f42;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI3NjA5MzM3LnBuZw==/315x250%23c/DtTkCa.png"
+                        alt="Kanchananukroh Online">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/kn-online"
+                        target="_blank">
+                        Kanchananukroh Online [KnOnline] | Beta Test
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/kn-online"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 11. M A S K
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/hG-S11Xps2w?si=oa1gQKjifPokLyw-"
+                style="z-index:15;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#000000;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI1MzExNjc4LmpwZw==/315x250%23c/SfjV61.jpg"
+                        alt="M A S K">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/m-a-s-k"
+                        target="_blank">
+                        M A S K
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#ffaa00;">
+                            Action
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/m-a-s-k"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 12. EsanGarden
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:14;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#c2e1f9;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MDYxLnBuZw==/315x250%23c/Zzk8Su.png"
+                        alt="EsanGarden">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/esangarden"
+                        target="_blank">
+                        EsanGarden | Beta test
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/esangarden"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 13. Echo Over The Gallop
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/p82HraqnfxE?si=iz5uxShZysB-w8lT"
+                style="z-index:13;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#343434;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MjUxLnBuZw==/315x250%23c/SxIk%2Bs.png"
+                        alt="Echo Over The Gallop">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/echo-from-the-gallop"
+                        target="_blank">
+                        Echo Over The Gallop
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#e91e63;">
+                            Survival
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/echo-from-the-gallop"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 14. Echo from the cave
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:12;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#500000;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI3ZjkwNDc3LnBuZw==/315x250%23c/w7KeXK.png"
+                        alt="Echo from the cave">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://hexven.itch.io/echo-from-the-cave"
+                        target="_blank">
+                        Echo from the cave
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            hexven
+                        </span>
+
+                        <span>
+                            Indie
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://hexven.itch.io/echo-from-the-cave"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 15. Thai Fight
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:11;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#cd7248;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MTc4LnBuZw==/315x250%23c/T0oYRp.png"
+                        alt="Thai Fight">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/thai-fight"
+                        target="_blank">
+                        Thai Fight - มวยไทยเกมส์ | prototype
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#ffaa00;">
+                            Fighting
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/thai-fight"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 16. The Serpent Eternal Chase Rebirth
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/bMXDktUwHYQ?si=Qt8x2IyiKy2cLnbU"
+                style="z-index:10;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#000000;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MjU3LnBuZw==/315x250%23c/wuvP3%2F.png"
+                        alt="The Serpent Eternal Chase Rebirth">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/the-serpent-eternal-chase-remake"
+                        target="_blank">
+                        The Serpent Eternal Chase Rebirth | Demo
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#9c27b0;">
+                            Adventure
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/the-serpent-eternal-chase-remake"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 17. LabEscape
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:9;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#1e1e1e;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MjExLnBuZw==/315x250%23c/T5i%2BxB.png"
+                        alt="LabEscape">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/labescape"
+                        target="_blank">
+                        LabEscape
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#4CAF50;">
+                            Play in browser
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/labescape"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 18. Eternal Dreams
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:8;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#282828;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MTg3LnBuZw==/315x250%23c/VW%2BSCw.png"
+                        alt="Eternal Dreams">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/eternal-dreams-ar"
+                        target="_blank">
+                        Eternal Dreams by อร่อยไปไหม
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span>
+                            Contest
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/eternal-dreams-ar"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 19. KnGuide
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:7;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#6b746f;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MTcwLnBuZw==/315x250%23c/Gbke87.png"
+                        alt="KnGuide">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/knguide-rework-2025"
+                        target="_blank">
+                        KnGuide | กาญจนานุเคราะห์
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#4CAF50;">
+                            Run in browser
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/knguide-rework-2025"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 20. My Room My Choice
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:6;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#464646;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MTEwLnBuZw==/315x250%23c/cZtBhB.png"
+                        alt="My Room My Choice">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/myroommychoice"
+                        target="_blank">
+                        My Room My Choice (Prototype)
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/myroommychoice"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 21. Shaman Simulator Project
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/YS6BoreaJbs?si=TNi_PF2X43y013KE"
+                style="z-index:5;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#553e2e;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzIxMzMyNTQ2LnBuZw==/315x250%23c/EoZ0zy.png"
+                        alt="Shaman Simulator">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/shaman-simulator-project"
+                        target="_blank">
+                        Shaman Simulator Project
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#e91e63;">
+                            Survival
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/shaman-simulator-project"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 22. สตรีอัญชันวิทยา
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:4;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#e3c0a6;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzI2MTE4MDgwLnBuZw==/315x250%23c/k1%2BRkb.png"
+                        alt="สตรีอัญชันวิทยา">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/thai-school-life-early-access"
+                        target="_blank">
+                        สตรีอัญชันวิทยา (Stop Dev)
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/thai-school-life-early-access"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 23. Kn Guid
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:3;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#ffffff;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzE5ODc2MDk2LnBuZw==/315x250%23c/nf2Gw%2B.png"
+                        alt="Kn Guid">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/kn-guid"
+                        target="_blank">
+                        Kn Guid [Kanchananukroh school project]
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#4CAF50;">
+                            Play in browser
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/kn-guid"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 24. The Serpent Eternal Chase
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video="https://youtu.be/F7lIA_zQjKk?si=__9dMh_FZxVb-s4J"
+                style="z-index:2;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#2c0506;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzE4MTk2ODQ5LnBuZw==/315x250%23c/MF1hNf.png"
+                        alt="The Serpent Eternal Chase">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/the-serpent-eternal-chase"
+                        target="_blank">
+                        The Serpent Eternal Chase [Stop developing]
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#9c27b0;">
+                            Adventure
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/the-serpent-eternal-chase"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 25. Siam Restaurant
+            ================================================= -->
+
+            <div
+                class="game-card"
+                data-video=""
+                style="z-index:1;">
+
+                <div
+                    class="game-thumb"
+                    style="background-color:#3b3f56;">
+
+                    <img
+                        src="https://img.itch.zone/aW1nLzE4MTExNDkwLmpwZw==/315x250%23c/v%2FlU6T.jpg"
+                        alt="Siam Restaurant">
+
+                </div>
+
+                <div class="game-info">
+
+                    <a
+                        class="game-title"
+                        href="https://krongthumdev.itch.io/siam-restaurant"
+                        target="_blank">
+                        Siam Restaurant (Stop developing)
+                    </a>
+
+                    <div class="game-meta">
+
+                        <span>
+                            KrongthumDev
+                        </span>
+
+                        <span style="color:#2196F3;">
+                            Simulation
+                        </span>
+
+                    </div>
+
+                    <a
+                        href="https://krongthumdev.itch.io/siam-restaurant"
+                        class="btn-play"
+                        target="_blank">
+                        View / Play Game
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <aside class="game-preview" aria-label="Selected game video preview">
+            <video id="gamePreviewVideo" muted autoplay loop playsinline preload="none">
+                <source id="gamePreviewSource" src="" type="video/mp4">
+            </video>
+        </aside>
+
     </div>
 
-    <!-- Row 3: Custom Brush Controls -->
-    <div class="ui-row">
-      <label>ชนิดพู่กัน:</label>
-      <select id="brush-type">
-        <option value="default">วงกลมมาตรฐาน</option>
-        <option value="custom">รูปภาพ Custom 🖼️</option>
-      </select>
-      <label class="file-btn" id="btn-custom-brush-file" style="background:#e91e63; display:none;">🖌️ เลือกรูปพู่กัน
-        <input type="file" id="file-brush" accept="image/*">
-      </label>
-      <label>ระยะห่าง (Spacing):</label>
-      <input type="range" id="brush-spacing" min="1" max="50" value="5">
-    </div>
+    <script src="script.js"></script>
 
-    <!-- Row 4: Brush Color & Size -->
-    <div class="ui-row">
-      <label>สีพู่กัน:</label>
-      <input type="color" id="brush-color" value="#ff0055">
-      <label>ขนาด:</label>
-      <input type="range" id="brush-size" min="5" max="120" value="25">
-      <label>ใส:</label>
-      <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1">
-    </div>
-
-    <!-- Row 5: Actions -->
-    <div class="ui-row">
-      <button id="btn-undo" style="background:#ff9800;" disabled>↩️ ย้อนกลับ</button>
-      <button id="btn-redo" style="background:#ff9800;" disabled>↪️ ทำซ้ำ</button>
-      <button id="btn-symmetry" style="background:#00bcd4;">สมมาตร: ปิด 🪞</button>
-      <button id="btn-mode">โหมด: ระบาย 🎨</button>
-      <button id="btn-eraser" style="background:#555;">พู่กัน 🖌️</button>
-      <button id="btn-save" style="background:#00c853;">เซฟ PNG 💾</button>
-    </div>
-
-    <div class="shortcut-info">
-      💡 <b>คีย์ลัด:</b> [Ctrl+Z] ย้อนกลับ | [Ctrl+Y] ทำซ้ำ | [Spacebar] สลับโหมด | [E] ยางลบ | [S] สมมาตร
-    </div>
-  </div>
-</div>
-
-<script>
-  // 1. Canvas Setup & History
-  const textureCanvas = document.createElement('canvas');
-  textureCanvas.width = 2048;
-  textureCanvas.height = 2048;
-  const ctx = textureCanvas.getContext('2d');
-  
-  const historyStack = [];
-  const redoStack = [];
-  const MAX_HISTORY = 15;
-
-  function saveState() {
-    if (historyStack.length >= MAX_HISTORY) historyStack.shift();
-    historyStack.push(ctx.getImageData(0, 0, textureCanvas.width, textureCanvas.height));
-    redoStack.length = 0;
-    updateUndoRedoButtons();
-  }
-
-  function undo() {
-    if (historyStack.length > 1) {
-      redoStack.push(historyStack.pop());
-      ctx.putImageData(historyStack[historyStack.length - 1], 0, 0);
-      baseTexture.needsUpdate = true;
-      updateUndoRedoButtons();
-    }
-  }
-
-  function redo() {
-    if (redoStack.length > 0) {
-      const state = redoStack.pop();
-      historyStack.push(state);
-      ctx.putImageData(state, 0, 0);
-      baseTexture.needsUpdate = true;
-      updateUndoRedoButtons();
-    }
-  }
-
-  function updateUndoRedoButtons() {
-    document.getElementById('btn-undo').disabled = historyStack.length <= 1;
-    document.getElementById('btn-redo').disabled = redoStack.length === 0;
-  }
-
-  function resetCanvas() {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, textureCanvas.width, textureCanvas.height);
-    historyStack.length = 0;
-    redoStack.length = 0;
-    saveState();
-  }
-  resetCanvas();
-
-  // Custom Brush Elements
-  let customBrushImage = null;
-  const brushTintCanvas = document.createElement('canvas');
-  const brushTintCtx = brushTintCanvas.getContext('2d');
-
-  function prepareTintedBrush(color, size) {
-    if (!customBrushImage) return null;
-    brushTintCanvas.width = size;
-    brushTintCanvas.height = size;
-
-    brushTintCtx.clearRect(0, 0, size, size);
-    brushTintCtx.drawImage(customBrushImage, 0, 0, size, size);
-
-    if (!isEraser) {
-      brushTintCtx.globalCompositeOperation = 'source-in';
-      brushTintCtx.fillStyle = color;
-      brushTintCtx.fillRect(0, 0, size, size);
-      brushTintCtx.globalCompositeOperation = 'source-over';
-    }
-    return brushTintCanvas;
-  }
-
-  // 2. Three.js Setup
-  const container = document.getElementById('canvas-container');
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a1a);
-
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
-  camera.position.set(0, 2, 5);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-  dirLight.position.set(5, 10, 7.5);
-  scene.add(dirLight);
-
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enabled = false;
-
-  const baseTexture = new THREE.CanvasTexture(textureCanvas);
-  let normalTexture = null;
-  let aoTexture = null;
-
-  const materials = {
-    lit: new THREE.MeshStandardMaterial({ map: baseTexture, roughness: 0.5, metalness: 0.1 }),
-    unlit: new THREE.MeshBasicMaterial({ map: baseTexture }),
-    toon: new THREE.MeshToonMaterial({ map: baseTexture })
-  };
-
-  let currentMaterial = materials.lit;
-  let loadedModel = null;
-  let isPaintingMode = true;
-  let isEraser = false;
-  let isSymmetry = false;
-  let isMouseDown = false;
-  let hasPaintedThisStroke = false;
-  let lastUV = null;
-
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-
-  function updateMaterialTextures() {
-    Object.values(materials).forEach(mat => {
-      mat.map = baseTexture;
-      if (mat !== materials.unlit) {
-        mat.normalMap = normalTexture;
-        mat.aoMap = aoTexture;
-        mat.aoMapIntensity = parseFloat(document.getElementById('ao-intensity').value);
-        if (mat.normalScale) {
-          const nScale = parseFloat(document.getElementById('normal-scale').value);
-          mat.normalScale.set(nScale, nScale);
-        }
-      }
-      mat.needsUpdate = true;
-    });
-  }
-
-  function fitModelToScreen(model) {
-    const box = new THREE.Box3().setFromObject(model);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    
-    model.position.sub(center);
-    if (maxDim > 0) {
-      const scale = 2.5 / maxDim;
-      model.scale.set(scale, scale, scale);
-    }
-  }
-
-  // 3. Import Model & Textures
-  document.getElementById('file-model').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const fileName = file.name.toLowerCase();
-    const reader = new FileReader();
-
-    reader.onload = function(event) {
-      if (loadedModel) scene.remove(loadedModel);
-
-      try {
-        if (fileName.endsWith('.obj')) {
-          const loader = new THREE.OBJLoader();
-          setupLoadedModel(loader.parse(event.target.result));
-        } else if (fileName.endsWith('.fbx')) {
-          const loader = new THREE.FBXLoader();
-          setupLoadedModel(loader.parse(event.target.result, ''));
-        }
-      } catch (err) {
-        alert("ไฟล์มีปัญหา ลองแปลงเป็น .OBJ ดูก่อนนะคะ");
-      }
-    };
-
-    if (fileName.endsWith('.fbx')) reader.readAsArrayBuffer(file);
-    else reader.readAsText(file);
-  });
-
-  function setupLoadedModel(model) {
-    model.traverse((child) => {
-      if (child.isMesh) {
-        child.material = currentMaterial;
-        if (child.geometry && !child.geometry.attributes.uv2 && child.geometry.attributes.uv) {
-          child.geometry.attributes.uv2 = child.geometry.attributes.uv;
-        }
-      }
-    });
-    fitModelToScreen(model);
-    loadedModel = model;
-    scene.add(loadedModel);
-  }
-
-  document.getElementById('file-texture').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const img = new Image();
-    img.onload = function() {
-      ctx.drawImage(img, 0, 0, textureCanvas.width, textureCanvas.height);
-      baseTexture.needsUpdate = true;
-      saveState();
-    };
-    img.src = URL.createObjectURL(file);
-  });
-
-  document.getElementById('file-normal').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const loader = new THREE.TextureLoader();
-    loader.load(URL.createObjectURL(file), (tex) => {
-      normalTexture = tex;
-      updateMaterialTextures();
-    });
-  });
-
-  document.getElementById('file-ao').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const loader = new THREE.TextureLoader();
-    loader.load(URL.createObjectURL(file), (tex) => {
-      aoTexture = tex;
-      updateMaterialTextures();
-    });
-  });
-
-  // Custom Brush Loader
-  document.getElementById('brush-type').addEventListener('change', (e) => {
-    const isCustom = e.target.value === 'custom';
-    document.getElementById('btn-custom-brush-file').style.display = isCustom ? 'inline-block' : 'none';
-  });
-
-  document.getElementById('file-brush').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const img = new Image();
-    img.onload = function() {
-      customBrushImage = img;
-    };
-    img.src = URL.createObjectURL(file);
-  });
-
-  document.getElementById('normal-scale').addEventListener('input', updateMaterialTextures);
-  document.getElementById('ao-intensity').addEventListener('input', updateMaterialTextures);
-
-  document.getElementById('select-shading').addEventListener('change', (e) => {
-    currentMaterial = materials[e.target.value];
-    if (loadedModel) {
-      loadedModel.traverse((child) => {
-        if (child.isMesh) child.material = currentMaterial;
-      });
-    }
-  });
-
-  // 4. Painting Logic with Custom Brush & Spacing
-  function drawStamp(canvasX, canvasY, size, color, opacity, useCustom) {
-    ctx.save();
-    ctx.globalAlpha = opacity;
-
-    if (useCustom && customBrushImage) {
-      const tintedBrush = prepareTintedBrush(color, size);
-      if (tintedBrush) {
-        ctx.drawImage(tintedBrush, canvasX - size / 2, canvasY - size / 2, size, size);
-      }
-    } else {
-      ctx.fillStyle = isEraser ? "#ffffff" : color;
-      ctx.beginPath();
-      ctx.arc(canvasX, canvasY, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawBrushAtUV(uvX, uvY) {
-    const size = parseFloat(document.getElementById('brush-size').value);
-    const opacity = parseFloat(document.getElementById('brush-opacity').value);
-    const color = document.getElementById('brush-color').value;
-    const useCustom = document.getElementById('brush-type').value === 'custom' && customBrushImage;
-
-    const currentX = uvX * textureCanvas.width;
-    const currentY = (1 - uvY) * textureCanvas.height;
-
-    const spacing = parseFloat(document.getElementById('brush-spacing').value);
-
-    if (!lastUV) {
-      drawStamp(currentX, currentY, size, color, opacity, useCustom);
-      if (isSymmetry) drawStamp(textureCanvas.width - currentX, currentY, size, color, opacity, useCustom);
-    } else {
-      const startX = lastUV.x * textureCanvas.width;
-      const startY = (1 - lastUV.y) * textureCanvas.height;
-      const dist = Math.hypot(currentX - startX, currentY - startY);
-
-      if (dist >= spacing) {
-        const steps = Math.floor(dist / spacing);
-        for (let i = 1; i <= steps; i++) {
-          const interpX = startX + (currentX - startX) * (i / steps);
-          const interpY = startY + (currentY - startY) * (i / steps);
-          drawStamp(interpX, interpY, size, color, opacity, useCustom);
-          if (isSymmetry) drawStamp(textureCanvas.width - interpX, interpY, size, color, opacity, useCustom);
-        }
-      } else {
-        return; // ไม่วาดถ้ายังไม่ถึง Spacing
-      }
-    }
-
-    lastUV = { x: uvX, y: uvY };
-    baseTexture.needsUpdate = true;
-    hasPaintedThisStroke = true;
-  }
-
-  function paint(e) {
-    if (!isPaintingMode || !loadedModel) return;
-
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    if (!clientX || !clientY) return;
-
-    mouse.x = (clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObject(loadedModel, true);
-
-    if (intersects.length > 0 && intersects[0].uv) {
-      const uv = intersects[0].uv;
-      drawBrushAtUV(uv.x, uv.y);
-    }
-  }
-
-  // Pointer Handlers
-  window.addEventListener('pointerdown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return;
-    isMouseDown = true;
-    hasPaintedThisStroke = false;
-    lastUV = null;
-    if (isPaintingMode) paint(e);
-  });
-
-  window.addEventListener('pointermove', (e) => {
-    if (isMouseDown && isPaintingMode) paint(e);
-  });
-
-  window.addEventListener('pointerup', () => {
-    if (isMouseDown && hasPaintedThisStroke) saveState();
-    isMouseDown = false;
-    lastUV = null;
-  });
-
-  // 5. Shortcuts & UI Actions
-  window.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-    else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) { e.preventDefault(); redo(); }
-    else if (e.code === 'Space') { e.preventDefault(); toggleMode(); }
-    else if (e.key === 'e' || e.key === 'E') { toggleEraser(); }
-    else if (e.key === 's' || e.key === 'S') { toggleSymmetry(); }
-  });
-
-  function toggleMode() {
-    isPaintingMode = !isPaintingMode;
-    controls.enabled = !isPaintingMode;
-    const btn = document.getElementById('btn-mode');
-    btn.innerText = isPaintingMode ? "โหมด: ระบาย 🎨" : "โหมด: หมุนมุมมอง 🔄";
-    btn.style.background = isPaintingMode ? "#ff2a74" : "#29b6f6";
-  }
-
-  function toggleEraser() {
-    isEraser = !isEraser;
-    const btn = document.getElementById('btn-eraser');
-    btn.innerText = isEraser ? "ยางลบ 🧹" : "พู่กัน 🖌️";
-    btn.style.background = isEraser ? "#ff9800" : "#555";
-  }
-
-  function toggleSymmetry() {
-    isSymmetry = !isSymmetry;
-    const btn = document.getElementById('btn-symmetry');
-    btn.innerText = isSymmetry ? "สมมาตร: เปิด 🪞" : "สมมาตร: ปิด 🪞";
-    btn.style.background = isSymmetry ? "#e91e63" : "#00bcd4";
-  }
-
-  document.getElementById('btn-undo').addEventListener('click', undo);
-  document.getElementById('btn-redo').addEventListener('click', redo);
-  document.getElementById('btn-mode').addEventListener('click', toggleMode);
-  document.getElementById('btn-eraser').addEventListener('click', toggleEraser);
-  document.getElementById('btn-symmetry').addEventListener('click', toggleSymmetry);
-
-  document.getElementById('btn-save').addEventListener('click', () => {
-    const link = document.createElement('a');
-    link.download = 'texture_painted.png';
-    link.href = textureCanvas.toDataURL('image/png');
-    link.click();
-  });
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
-  animate();
-</script>
 </body>
+
 </html>

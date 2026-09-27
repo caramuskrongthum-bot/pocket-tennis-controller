@@ -1,0 +1,532 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: #0e0e1c;
+    color: #0e0e1c;
+    font-family: "Edu QLD Hand", cursive;
+}
+
+
+/* =========================================================
+   MAIN CONTAINER
+========================================================= */
+
+.container {
+    position: relative;
+    z-index: 10;
+
+    width: 100%;
+    height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    perspective: 1000px;
+
+}
+
+
+/* =========================================================
+   CARD STACK
+========================================================= */
+
+.card-stack {
+    position: relative;
+    width: 380px;
+    height: 520px;
+}
+
+
+/* =========================================================
+   GAME CARD
+========================================================= */
+
+.game-card {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    background: rgba(255, 255, 255, 1);
+
+    border-radius: 5px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.5);
+
+    display: flex;
+    flex-direction: column;
+
+    transition:
+        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.25s ease,
+        filter 0.25s ease;
+
+    cursor: pointer;
+    
+}
+
+
+/* =========================================================
+   GAME THUMBNAIL
+========================================================= */
+
+.game-thumb {
+    width: 90%;
+    height: 50%;
+
+    background-color: #202021;
+
+    overflow: hidden;
+
+    border-radius: 15px;
+
+    margin: 20px auto 0 auto;
+}
+
+.game-thumb img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+
+/* =========================================================
+   GAME INFO
+========================================================= */
+
+.game-info {
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+
+    flex-grow: 1;
+
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 1),
+            rgba(200, 200, 200, 1)
+        );
+}
+
+
+/* =========================================================
+   TITLE
+========================================================= */
+
+.game-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+
+    text-decoration: none;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+
+    overflow: hidden;
+
+    color: #0e0e1c;
+
+    transition:
+        color 0.2s ease,
+        font-size 0.2s ease;
+}
+
+.game-title:hover {
+    color: #202021;
+    font-size: 1.26rem;
+}
+
+
+/* =========================================================
+   META
+========================================================= */
+
+.game-meta {
+    font-size: 0.9rem;
+
+    color: #202021;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+/* =========================================================
+   PLAY BUTTON
+========================================================= */
+
+.btn-play {
+    margin-top: auto;
+
+    padding: 50px;
+    background: url("BTN_TEXTURE/Ui_Bg_Panel.png") center / 100% 100% no-repeat;
+
+    color: white;
+
+    text-align: center;
+
+    border-radius: 8px;
+
+    text-decoration: none;
+
+    font-weight: bold;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.btn-play:hover {
+    transform: translateY(-2px);
+}
+
+
+/* =========================================================
+   INSTRUCTIONS
+========================================================= */
+
+.instructions {
+    position: absolute;
+
+    bottom: 20px;
+
+    width: 100%;
+
+    text-align: center;
+
+    color: #777;
+
+    font-size: 0.9rem;
+
+    pointer-events: none;
+
+    z-index: 20;
+}
+
+
+/* =========================================================
+   DYNAMIC GAME BACKGROUND
+   
+   Thumbnail
+        ↓
+   YouTube Video
+========================================================= */
+
+.video-background {
+    position: fixed;
+
+    inset: -35px;
+
+    width: calc(100% + 70px);
+    height: calc(100% + 70px);
+
+    z-index: 0;
+
+    overflow: hidden;
+
+    background: #000;
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   THUMBNAIL BACKGROUND
+========================================================= */
+
+.video-bg-thumbnail {
+    position: absolute;
+
+    inset: 0;
+
+    background-color: #000;
+
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+
+    /*
+     * Blur เพื่อให้ Thumbnail
+     * กลายเป็น Background แบบ cinematic
+     */
+    filter: blur(18px);
+
+    transform: scale(1.08);
+
+    opacity: 0;
+
+    transition:
+        opacity 0.45s ease;
+
+    z-index: 0;
+}
+
+
+/* =========================================================
+   BLACK FALLBACK
+   
+   ใช้เฉพาะกรณีไม่มี Thumbnail
+========================================================= */
+
+.video-bg-black {
+    position: absolute;
+
+    inset: 0;
+
+    background: #000;
+
+    opacity: 0;
+
+    transition:
+        opacity 0.45s ease;
+
+    z-index: 1;
+}
+
+
+/* =========================================================
+   YOUTUBE VIDEO
+========================================================= */
+
+.video-background iframe {
+    position: absolute;
+
+    width: 100%;
+    height: 100%;
+
+    left: 0;
+    top: 0;
+
+    border: 0;
+
+    opacity: 0;
+
+    /*
+     * ขยายออกนิดหนึ่งเพื่อไม่ให้เห็นขอบ
+     */
+    transform: scale(1.18);
+
+    /*
+     * Video Background จะเบลอนิด ๆ
+     * เพื่อไม่แย่งความสนใจจาก Card
+     */
+    filter: blur(15px);
+
+    transition:
+        opacity 0.7s ease;
+
+    z-index: 2;
+}
+
+
+/* =========================================================
+   DARK OVERLAY
+========================================================= */
+
+.video-bg-overlay {
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        linear-gradient(
+            rgba(0, 0, 0, 0.48),
+            rgba(0, 0, 0, 0.58)
+        );
+
+    z-index: 3;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+    .card-stack {
+        width: 88vw;
+        height: 120vw;
+
+        max-width: 380px;
+        max-height: 520px;
+    }
+
+    .game-info {
+        padding: 16px;
+    }
+
+    .instructions {
+        font-size: 0.8rem;
+        padding: 0 20px;
+    }
+
+}
+
+/* Navigation and page layout */
+.side-nav {
+    position: fixed;
+    z-index: 30;
+    inset: 50% auto auto 20px;
+    transform: translateY(-50%);
+    height: 90vh;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, .12);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, .3);
+}
+
+.side-nav button {
+    width: 64px;
+    height: 54px;
+    padding: 4px;
+    border: 0;
+    border-radius: 14px;
+    color: white;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.side-nav button img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.side-nav button.active,
+.side-nav button:hover {
+    background: rgba(255, 255, 255, .2);
+}
+
+.page { display: none; position: fixed; inset: 0; }
+.page.active { display: block; }
+
+.page-story {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 30px 30px 110px;
+    color: white;
+    background: radial-gradient(ellipse at top right, #493c88, #0e0e1c 65%);
+}
+
+.page-story.active { display: flex; }
+
+.story-panel {
+    width: min(720px, 100%);
+    padding: 36px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 24px;
+    background: rgba(255,255,255,.1);
+    backdrop-filter: blur(18px);
+}
+
+.story-panel h1 { margin-bottom: 12px; }
+.story-panel p { margin-bottom: 18px; color: #ddd; }
+
+.story-panel textarea {
+    width: 100%;
+    min-height: 260px;
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 14px;
+    color: white;
+    background: rgba(0,0,0,.25);
+    font: inherit;
+    resize: vertical;
+}
+
+.page-games { padding-left: 100px; }
+.page-games .container { gap: 32px; }
+
+.game-preview {
+    width: min(42vw, 620px);
+    height: min(60vh, 460px);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 18px;
+    background: #000;
+    box-shadow: 0 15px 35px rgba(0,0,0,.5);
+}
+
+.game-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.side-nav::before {
+    content: "GAMES";
+    color: rgba(255,255,255,.65);
+    font: 700 .65rem Arial, sans-serif;
+    letter-spacing: .16em;
+    text-align: center;
+}
+.side-nav button {
+    min-width: 46px;
+    min-height: 42px;
+    border: 1px solid rgba(255,255,255,.12);
+    transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+.side-nav button:hover { transform: translateX(3px); }
+.side-nav button.active {
+    background: linear-gradient(135deg, rgba(173,145,255,.6), rgba(90,191,255,.22));
+    box-shadow: inset 0 0 16px rgba(255,255,255,.12), 0 0 18px rgba(126,93,255,.25);
+}
+.game-preview { position: relative; }
+.game-preview::after {
+    content: "GAMEPLAY PREVIEW";
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    padding: 7px 10px;
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 20px;
+    color: white;
+    background: rgba(10,10,20,.45);
+    backdrop-filter: blur(10px);
+    font: 600 .65rem Arial, sans-serif;
+    letter-spacing: .12em;
+    pointer-events: none;
+}
+
+@media (max-width: 800px) {
+    .page-games { padding-left: 0; }
+    .page-games .container { gap: 0; }
+    .game-preview { display: none; }
+    .side-nav { left: 8px; padding: 6px; }
+    .side-nav button { padding: 10px; }
+}
