@@ -16,8 +16,10 @@ const cards =
     document.querySelectorAll('.game-card');
 
 const gameNavigation = document.getElementById('gameNavigation');
-const gamePreviewVideo = document.getElementById('gamePreviewVideo');
-const gamePreviewSource = document.getElementById('gamePreviewSource');
+const gamePreviewIframe = document.getElementById('gamePreviewIframe');
+const gamePreviewEmpty = document.getElementById('gamePreviewEmpty');
+
+let previewLoadTimer = null;
 
 
 let currentIndex = 0;
@@ -236,6 +238,90 @@ function updateVideoBackground() {
 
 
 /* =========================================================
+   UPDATE GAME PREVIEW (side panel)
+
+   ใช้ data-video ของ card เดียวกับ background
+   ถ้าไม่มี video → โชว์ "No preview video"
+========================================================= */
+
+function updateGamePreview() {
+
+    if (!gamePreviewIframe) return;
+
+    const card =
+        cards[currentIndex];
+
+    if (!card) return;
+
+
+    clearTimeout(previewLoadTimer);
+
+    const videoUrl =
+        card.dataset.video || '';
+
+    const videoId =
+        getYouTubeId(videoUrl);
+
+
+    /* -----------------------------------------------------
+       No Video → show empty state
+    ----------------------------------------------------- */
+
+    if (!videoId) {
+
+        gamePreviewIframe.classList.remove('visible');
+
+        gamePreviewEmpty?.classList.remove('hidden');
+
+        previewLoadTimer = setTimeout(() => {
+
+            if (cards[currentIndex] === card) {
+                gamePreviewIframe.src = '';
+            }
+
+        }, 400);
+
+        return;
+    }
+
+
+    /* -----------------------------------------------------
+       Video Exists → load embed, fade in
+    ----------------------------------------------------- */
+
+    gamePreviewIframe.classList.remove('visible');
+
+    const embedUrl =
+        `https://www.youtube.com/embed/${videoId}` +
+        `?autoplay=1` +
+        `&mute=1` +
+        `&loop=1` +
+        `&playlist=${videoId}` +
+        `&controls=0` +
+        `&rel=0` +
+        `&modestbranding=1` +
+        `&playsinline=1`;
+
+    gamePreviewIframe.src =
+        embedUrl;
+
+    previewLoadTimer = setTimeout(() => {
+
+        if (cards[currentIndex] === card) {
+
+            gamePreviewIframe.classList.add('visible');
+
+            gamePreviewEmpty?.classList.add('hidden');
+
+        }
+
+    }, 500);
+
+}
+
+
+
+/* =========================================================
    UPDATE CARDS
 ========================================================= */
 
@@ -247,14 +333,7 @@ function updateCards() {
         else button.removeAttribute('aria-current');
     });
 
-    const title = cards[currentIndex]?.querySelector('.game-title')?.textContent.trim() || '';
-    const filename = title.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_');
-    const previewPath = `videos/${filename}_VDO.mp4`;
-    if (gamePreviewSource.getAttribute('src') !== previewPath) {
-        gamePreviewSource.src = previewPath;
-        gamePreviewVideo.load();
-        gamePreviewVideo.play().catch(() => {});
-    }
+    updateGamePreview();
 
     cards.forEach((card, index) => {
 

@@ -1402,9 +1402,15 @@
         </div>
 
         <aside class="game-preview" aria-label="Selected game video preview">
-            <video id="gamePreviewVideo" muted autoplay loop playsinline preload="none">
-                <source id="gamePreviewSource" src="" type="video/mp4">
-            </video>
+            <iframe
+                id="gamePreviewIframe"
+                src=""
+                title="Gameplay preview"
+                frameborder="0"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                referrerpolicy="strict-origin-when-cross-origin">
+            </iframe>
+            <div class="game-preview-empty" id="gamePreviewEmpty">No preview video</div>
         </aside>
 
     </div>
